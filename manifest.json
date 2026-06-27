@@ -1,0 +1,9 @@
+{
+  "manifest_version": 3,
+  "name": "CookieMonstr",
+  "version": "0.1",
+  "description": "Audits cookies and web storage security.",
+  "action": {
+    "default_popup": "popup/popup.html"
+  }
+}
