@@ -4,6 +4,20 @@ chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
   const url = activeTab.url;
 
   console.log("Active tab URL:", url);
+  function getSeverityIcon(severity) {
+  switch (severity) {
+    case "HIGH":
+      return "🔴";
+    case "MEDIUM":
+      return "🟡";
+    case "LOW":
+      return "🟢";
+    case "INFO":
+      return "🔵";
+    default:
+      return "⚪";
+    }
+  }
 
   // Send message to service worker requesting cookies for this URL
   chrome.runtime.sendMessage({ action: "GET_COOKIES", url }, (response) => {
@@ -25,17 +39,18 @@ chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
           <ul>
             ${
               cookie.findings.length === 0
-                ? "<li>✅ No security issues found.</li>"
-                : cookie.findings
-                    .map(
-                      finding => `
-                        <li>
-                          <strong>${finding.severity}</strong> -
-                          ${finding.title}
-                        </li>
-                      `
-                    )
-                    .join("")
+              ? `<li>✅ No security issues found.</li>`
+              : cookie.findings.map(finding => `
+                <li>
+                  <strong>${getSeverityIcon(finding.severity)} ${finding.severity}</strong><br>
+                  <strong>${finding.title}</strong><br>
+
+                  ${finding.explanation}<br>
+
+                  <strong>Recommendation:</strong><br>
+                  ${finding.fix} <br><br>
+                </li>
+              `).join("")
             }
           </ul>
         </div>
