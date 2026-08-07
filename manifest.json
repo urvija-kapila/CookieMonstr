@@ -3,7 +3,20 @@
   "name": "CookieMonstr",
   "version": "0.1",
   "description": "Audits cookies and web storage security.",
+  "permissions": [
+    "cookies",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background/service_worker.js",
+    "type":"module"
+  },
   "action": {
     "default_popup": "popup/popup.html"
   }
 }
+
+
