@@ -8,12 +8,27 @@
 </head>
 <body>
 
-  <h2>CookieMonstr</h2>
+  <div class="container">
+    <h2>🛡 CookieMonstr</h2>
 
-  <p id="status-message">Manifest connected successfully! Popup is active.</p>
-
-  <div id="audit-results">
+    <!-- Tab Navigation -->
+    <div class="tab-navigation">
+      <button class="tab-button active" data-tab="cookies">Cookies</button>
+      <button class="tab-button" data-tab="storage">Storage</button>
     </div>
+
+    <!-- Cookies Tab -->
+    <div id="cookies-tab" class="tab-content active">
+      <div id="cookie-summary" class="audit-summary"></div>
+      <div id="cookie-results"></div>
+    </div>
+
+    <!-- Storage Tab -->
+    <div id="storage-tab" class="tab-content">
+      <div id="storage-summary" class="audit-summary"></div>
+      <div id="storage-results"></div>
+    </div>
+  </div>
 
   <script src="popup.js"></script>
 </body>

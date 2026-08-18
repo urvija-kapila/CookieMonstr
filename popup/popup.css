@@ -1,25 +1,151 @@
 /* Apply a smooth, modern font and dark theme to the entire popup */
 body {
-  width: 300px;
+  width: 450px;
   margin: 0;
-  padding: 15px;
+  padding: 0;
   background-color: #121212; /* Dark background */
   color: #e0e0e0;            /* Light, readable text */
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
+.container {
+  padding: 12px;
+}
+
 /* Style the main title */
 h2 {
   font-size: 16px;
-  margin-top: 0;
-  margin-bottom: 10px;
+  margin: 0 0 12px 0;
   color: #ffffff;            /* Pure white for the heading */
 }
 
-/* Style the status/success text */
-p {
+/* Tab Navigation */
+.tab-navigation {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  border-bottom: 2px solid #2d2d2d;
+}
+
+.tab-button {
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  color: #a0a0a0;
+  cursor: pointer;
   font-size: 13px;
+  font-weight: 500;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.tab-button:hover {
+  color: #e0e0e0;
+}
+
+.tab-button.active {
+  color: #7c6ef7;
+  border-bottom-color: #7c6ef7;
+}
+
+/* Tab Content */
+.tab-content {
+  display: none;
+  animation: fadeIn 0.2s ease;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Audit Summary */
+.audit-summary {
+  background-color: #1e1e1e;
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 12px;
+  border-left: 3px solid #7c6ef7;
+}
+
+.audit-summary h3 {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  color: #ffffff;
+}
+
+.audit-summary p {
+  margin: 4px 0;
+  font-size: 12px;
+  color: #a0a0a0;
+}
+
+/* Cookie & Storage Cards */
+.cookie-card,
+.storage-item-card {
+  background-color: #1e1e1e;
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-left: 3px solid #7c6ef7;
+}
+
+.cookie-card h3,
+.storage-item-card h3 {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  color: #ffffff;
+  word-break: break-word;
+}
+
+.cookie-card p,
+.storage-item-card p {
+  font-size: 12px;
   line-height: 1.4;
-  margin: 0;
-  color: #a0a0a0;            /* Slightly muted grey for secondary text */
+  margin: 4px 0;
+  color: #a0a0a0;
+}
+
+.cookie-card strong,
+.storage-item-card strong {
+  color: #e0e0e0;
+}
+
+.cookie-card ul,
+.storage-item-card ul {
+  margin: 8px 0 0 0;
+  padding-left: 16px;
+  list-style: none;
+}
+
+.cookie-card li,
+.storage-item-card li {
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 8px 0;
+  padding: 8px;
+  background-color: rgba(124, 110, 247, 0.1);
+  border-radius: 4px;
+  color: #e0e0e0;
+}
+
+.cookie-card li strong,
+.storage-item-card li strong {
+  color: #7c6ef7;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 20px;
+  color: #a0a0a0;
+  font-size: 12px;
+}
+
+.empty-state p {
+  margin: 8px 0;
 }

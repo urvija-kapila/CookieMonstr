@@ -5,7 +5,8 @@
   "description": "Audits cookies and web storage security.",
   "permissions": [
     "cookies",
-    "activeTab"
+    "activeTab",
+    "scripting"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -14,6 +15,13 @@
     "service_worker": "background/service_worker.js",
     "type":"module"
   },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content_scripts/storage_reader.js"],
+      "run_at": "document_end"
+    }
+  ],
   "action": {
     "default_popup": "popup/popup.html"
   }
