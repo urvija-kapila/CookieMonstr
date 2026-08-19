@@ -22,8 +22,14 @@
       "run_at": "document_end"
     }
   ],
+  "icons": {
+    "128": "assets/icons/CookieMonstr logo.png"
+  },
   "action": {
-    "default_popup": "popup/popup.html"
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "128": "assets/icons/CookieMonstr logo.png"
+    }
   }
 }
 

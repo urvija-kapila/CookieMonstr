@@ -52,11 +52,23 @@ body {
 }
 
 .header h1 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   font-size: 18px;
   margin: 0 0 4px 0;
   color: var(--text-primary);
   font-weight: 600;
   letter-spacing: 0.3px;
+}
+
+.brand-logo {
+  width: 28px;
+  height: 28px;
+  object-fit: cover;
+  border-radius: 7px;
+  vertical-align: middle;
 }
 
 .tagline {
