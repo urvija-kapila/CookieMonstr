@@ -3,83 +3,61 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="CookieMonstr - Security audit for cookies and web storage">
   <title>CookieMonstr</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
 
   <div class="container">
-    <h2>🛡 CookieMonstr</h2>
+    <!-- Header -->
+    <div class="header">
+      <h1>🛡 CookieMonstr</h1>
+      <p class="tagline">Security audit for cookies & storage</p>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div id="loading-indicator" class="loading-indicator hidden">
+      <div class="spinner"></div>
+      <p>Running security audit...</p>
+    </div>
 
     <!-- Tab Navigation -->
     <div class="tab-navigation">
-      <button class="tab-button active" data-tab="cookies">Cookies</button>
-      <button class="tab-button" data-tab="storage">Storage</button>
-      <button class="tab-button" data-tab="tracking">Tracking</button>
-      <button class="tab-button" data-tab="settings">⚙️</button>
+      <button class="tab-button active" data-tab="cookies" aria-selected="true">Cookies</button>
+      <button class="tab-button" data-tab="storage" aria-selected="false">Storage</button>
+      <button class="tab-button" data-tab="tracking" aria-selected="false">Tracking</button>
     </div>
 
     <!-- Cookies Tab -->
-    <div id="cookies-tab" class="tab-content active">
+    <div id="cookies-tab" class="tab-content active" role="tabpanel">
       <div id="cookie-summary" class="audit-summary"></div>
       <div id="cookie-results"></div>
     </div>
 
     <!-- Storage Tab -->
-    <div id="storage-tab" class="tab-content">
+    <div id="storage-tab" class="tab-content" role="tabpanel">
       <div id="storage-summary" class="audit-summary"></div>
       <div id="storage-results"></div>
     </div>
 
     <!-- Tracking Tab -->
-    <div id="tracking-tab" class="tab-content">
+    <div id="tracking-tab" class="tab-content" role="tabpanel">
       <div id="tracking-summary" class="audit-summary"></div>
       <div id="tracking-results"></div>
     </div>
 
-    <!-- Settings Tab -->
-    <div id="settings-tab" class="tab-content">
-      <div class="settings-panel">
-        <h3>Preferences</h3>
-        
-        <div class="setting-item">
-          <label>
-            <input type="checkbox" id="pref-tracking" checked>
-            <span>Enable Tracking Detection</span>
-          </label>
-        </div>
-
-        <div class="setting-item">
-          <label>
-            <input type="checkbox" id="pref-storage" checked>
-            <span>Enable Storage Audit</span>
-          </label>
-        </div>
-
-        <div class="setting-item">
-          <label>
-            <input type="checkbox" id="pref-privacy-mode">
-            <span>Privacy Mode (hide values in export)</span>
-          </label>
-        </div>
-
-        <h3>Whitelist</h3>
-        <div id="whitelist-container"></div>
-
-        <h3>Statistics</h3>
-        <div id="stats-display"></div>
-
-        <h3>Data Management</h3>
-        <div class="button-group">
-          <button id="export-settings-btn" class="settings-btn secondary">📥 Export Settings</button>
-          <button id="clear-data-btn" class="settings-btn danger">🗑️ Clear All Data</button>
-        </div>
-      </div>
-    </div>
+    <!-- Error Display -->
+    <div id="error-container" class="error-container hidden" role="alert"></div>
 
     <!-- Export Section -->
     <div class="export-section">
-      <button id="export-button" class="export-btn">📥 Export Report (JSON)</button>
+      <button id="export-button" class="export-btn" aria-label="Export security audit report as JSON">📥 Export Report</button>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p class="footer-text">Security audit v0.1 • Always enable HTTPS</p>
     </div>
   </div>
 
