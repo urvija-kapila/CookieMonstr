@@ -16,6 +16,7 @@
       <button class="tab-button active" data-tab="cookies">Cookies</button>
       <button class="tab-button" data-tab="storage">Storage</button>
       <button class="tab-button" data-tab="tracking">Tracking</button>
+      <button class="tab-button" data-tab="settings">⚙️</button>
     </div>
 
     <!-- Cookies Tab -->
@@ -34,6 +35,46 @@
     <div id="tracking-tab" class="tab-content">
       <div id="tracking-summary" class="audit-summary"></div>
       <div id="tracking-results"></div>
+    </div>
+
+    <!-- Settings Tab -->
+    <div id="settings-tab" class="tab-content">
+      <div class="settings-panel">
+        <h3>Preferences</h3>
+        
+        <div class="setting-item">
+          <label>
+            <input type="checkbox" id="pref-tracking" checked>
+            <span>Enable Tracking Detection</span>
+          </label>
+        </div>
+
+        <div class="setting-item">
+          <label>
+            <input type="checkbox" id="pref-storage" checked>
+            <span>Enable Storage Audit</span>
+          </label>
+        </div>
+
+        <div class="setting-item">
+          <label>
+            <input type="checkbox" id="pref-privacy-mode">
+            <span>Privacy Mode (hide values in export)</span>
+          </label>
+        </div>
+
+        <h3>Whitelist</h3>
+        <div id="whitelist-container"></div>
+
+        <h3>Statistics</h3>
+        <div id="stats-display"></div>
+
+        <h3>Data Management</h3>
+        <div class="button-group">
+          <button id="export-settings-btn" class="settings-btn secondary">📥 Export Settings</button>
+          <button id="clear-data-btn" class="settings-btn danger">🗑️ Clear All Data</button>
+        </div>
+      </div>
     </div>
 
     <!-- Export Section -->

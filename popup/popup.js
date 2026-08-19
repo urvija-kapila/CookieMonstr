@@ -8,12 +8,116 @@ let auditResults = {
   tracking: {}
 };
 
+let preferences = {};
+let whitelist = [];
+
+// ============================================================
+// Settings Management
+// ============================================================
+
+async function loadSettingsPanel() {
+  preferences = await chrome.storage.local.get('cmPreferences').then((result) => {
+    return result.cmPreferences || {};
+  });
+
+  whitelist = await chrome.storage.local.get('cmWhitelist').then((result) => {
+    return result.cmWhitelist || [];
+  });
+
+  const stats = await chrome.storage.local.get('cmStats').then((result) => {
+    return result.cmStats || { auditsRun: 0 };
+  });
+
+  // Populate preference checkboxes
+  document.getElementById('pref-tracking').checked = preferences.enableTracking !== false;
+  document.getElementById('pref-storage').checked = preferences.enableStorage !== false;
+  document.getElementById('pref-privacy-mode').checked = preferences.privacyMode === true;
+
+  // Populate whitelist
+  const whitelistContainer = document.getElementById('whitelist-container');
+  if (whitelist.length === 0) {
+    whitelistContainer.innerHTML =
+      '<p style="color: #a0a0a0; font-size: 11px;">No whitelisted trackers yet.</p>';
+  } else {
+    whitelistContainer.innerHTML = whitelist
+      .map(
+        (item) => `
+      <div class="whitelist-item">
+        <span class="whitelist-item-domain">${item.domain}</span>
+        <button class="whitelist-item-remove" data-domain="${item.domain}">Remove</button>
+      </div>
+    `
+      )
+      .join('');
+
+    // Add remove button listeners
+    document.querySelectorAll('.whitelist-item-remove').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const domain = btn.getAttribute('data-domain');
+        whitelist = whitelist.filter((item) => item.domain !== domain);
+        await chrome.storage.local.set({ cmWhitelist: whitelist });
+        loadSettingsPanel();
+      });
+    });
+  }
+
+  // Populate statistics
+  const statsDisplay = document.getElementById('stats-display');
+  statsDisplay.innerHTML = `
+    <div class="stats-line">Audits run: <strong>${stats.auditsRun}</strong></div>
+    ${stats.lastAudit ? `<div class="stats-line">Last audit: <strong>${new Date(stats.lastAudit).toLocaleString()}</strong></div>` : ''}
+  `;
+
+  // Add event listeners for preference changes
+  document.getElementById('pref-tracking').addEventListener('change', (e) => {
+    preferences.enableTracking = e.target.checked;
+    chrome.storage.local.set({ cmPreferences: preferences });
+  });
+
+  document.getElementById('pref-storage').addEventListener('change', (e) => {
+    preferences.enableStorage = e.target.checked;
+    chrome.storage.local.set({ cmPreferences: preferences });
+  });
+
+  document.getElementById('pref-privacy-mode').addEventListener('change', (e) => {
+    preferences.privacyMode = e.target.checked;
+    chrome.storage.local.set({ cmPreferences: preferences });
+  });
+
+  document.getElementById('export-settings-btn').addEventListener('click', async () => {
+    const backup = {
+      preferences,
+      whitelist,
+      exportedAt: new Date().toISOString()
+    };
+
+    const json = JSON.stringify(backup, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cookiemonstr-settings-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('clear-data-btn').addEventListener('click', async () => {
+    if (confirm('Are you sure? This will clear all settings, whitelist, and statistics.')) {
+      await chrome.storage.local.clear();
+      location.reload();
+    }
+  });
+}
+
 // ============================================================
 // Tab Switching
 // ============================================================
 
 document.querySelectorAll('.tab-button').forEach((button) => {
-  button.addEventListener('click', () => {
+  button.addEventListener('click', async () => {
     const tabName = button.getAttribute('data-tab');
 
     // Hide all tabs
@@ -29,6 +133,11 @@ document.querySelectorAll('.tab-button').forEach((button) => {
     // Show active tab
     document.getElementById(`${tabName}-tab`).classList.add('active');
     button.classList.add('active');
+
+    // Load settings panel when settings tab is opened
+    if (tabName === 'settings') {
+      await loadSettingsPanel();
+    }
   });
 });
 
@@ -40,12 +149,25 @@ function exportReport() {
   const report = {
     timestamp: new Date().toISOString(),
     url: auditResults.url,
+    privacyMode: preferences.privacyMode,
     cookies: {
       total: auditResults.cookies.length,
-      findings: auditResults.cookies
+      findings: auditResults.cookies.map((c) => ({
+        ...c,
+        domain: c.domain,
+        name: preferences.privacyMode ? '[REDACTED]' : c.name
+      }))
     },
     storage: {
-      items: auditResults.storage
+      items: preferences.privacyMode
+        ? Object.keys(auditResults.storage).reduce((acc, type) => {
+            acc[type] = Object.keys(auditResults.storage[type]).map((k) => ({
+              key: '[REDACTED]',
+              value: '[REDACTED]'
+            }));
+            return acc;
+          }, {})
+        : auditResults.storage
     },
     tracking: {
       summary: auditResults.tracking.summary,
@@ -265,7 +387,7 @@ function renderStorageAudit(response) {
 }
 
 // ============================================================
-// Tracking Detection
+// Tracking Detection with Categorization
 // ============================================================
 
 function renderTrackingAudit(cookies) {
@@ -275,110 +397,174 @@ function renderTrackingAudit(cookies) {
     return;
   }
 
-  // Simple inline tracking detection (full version would import trackingDetector.js)
-  const KNOWN_TRACKERS = [
-    'google-analytics.com', 'analytics.google.com', 'googletagmanager.com',
-    'doubleclick.net', 'facebook.com', 'fbcdn.net', 'ads.twitter.com',
-    'linkedin.com', 'criteo.com', 'hotjar.com', 'mixpanel.com',
-    'amplitude.com', 'segment.com', 'sentry.io', 'datadog.com'
-  ];
+  // Simple inline tracking detection with categorization
+  const TRACKER_DATABASE = {
+    analytics: {
+      category: 'Analytics & Measurement',
+      icon: '📊',
+      domains: [
+        'google-analytics.com',
+        'analytics.google.com',
+        'googletagmanager.com',
+        'amplitude.com'
+      ]
+    },
+    advertising: {
+      category: 'Advertising & Retargeting',
+      icon: '📢',
+      domains: [
+        'doubleclick.net',
+        'criteo.com',
+        'facebook.com',
+        'fbcdn.net',
+        'twitter.com',
+        'ads.twitter.com'
+      ]
+    },
+    social: {
+      category: 'Social Media',
+      icon: '👥',
+      domains: ['facebook.com', 'twitter.com', 'linkedin.com', 'instagram.com']
+    },
+    performance: {
+      category: 'Performance Monitoring',
+      icon: '⚡',
+      domains: ['sentry.io', 'datadog.com', 'newrelic.com']
+    }
+  };
 
-  const trackerCookies = [];
-  const suspiciousCookies = [];
+  const categorized = {
+    analytics: [],
+    advertising: [],
+    social: [],
+    performance: [],
+    suspicious: []
+  };
+
   const randomPattern = /^[a-z0-9]{16,}$|_[a-z0-9]{20,}|uuid|tracking|beacon|pixel/i;
 
   cookies.forEach((cookie) => {
-    // Detect known trackers
-    const isTracker = KNOWN_TRACKERS.some((tracker) =>
-      cookie.domain.includes(tracker)
-    );
-
-    if (isTracker) {
-      trackerCookies.push({
-        ...cookie,
-        trackingType: 'Third-Party Tracker'
-      });
+    // Check known trackers
+    let found = false;
+    for (const [key, data] of Object.entries(TRACKER_DATABASE)) {
+      if (data.domains.some((domain) => cookie.domain.includes(domain))) {
+        categorized[key].push({ ...cookie, categoryData: data });
+        found = true;
+        break;
+      }
     }
 
-    // Detect suspicious naming
-    const hasRandomName = randomPattern.test(cookie.name);
-    const lacksSecurity = !cookie.httpOnly && !cookie.secure;
-
-    if (hasRandomName && lacksSecurity) {
-      suspiciousCookies.push({
-        ...cookie,
-        trackingType: 'Suspicious Pattern'
-      });
+    // Check suspicious patterns
+    if (
+      !found &&
+      randomPattern.test(cookie.name) &&
+      !cookie.httpOnly &&
+      !cookie.secure
+    ) {
+      categorized.suspicious.push(cookie);
     }
   });
 
-  const cookieOverload = cookies.length > 20;
-
-  auditResults.tracking = {
-    trackers: trackerCookies,
-    suspicious: suspiciousCookies,
-    cookieOverload: cookieOverload,
-    summary: {
-      totalTrackers: trackerCookies.length,
-      totalSuspicious: suspiciousCookies.length,
-      cookieCount: cookies.length,
-      riskLevel:
-        trackerCookies.length + suspiciousCookies.length > 5
-          ? 'HIGH'
-          : trackerCookies.length + suspiciousCookies.length > 2
-          ? 'MEDIUM'
-          : 'LOW'
-    }
-  };
+  const totalTrackers =
+    categorized.analytics.length +
+    categorized.advertising.length +
+    categorized.social.length +
+    categorized.performance.length;
 
   // Render summary
   const summaryHTML = `
     <h3>Tracking Analysis</h3>
-    <p>Third-Party Trackers: ${trackerCookies.length}</p>
-    <p>Suspicious Patterns: ${suspiciousCookies.length}</p>
-    <p>Total Cookies: ${cookies.length}</p>
-    <p>Risk Level: ${auditResults.tracking.summary.riskLevel}</p>
-    ${cookieOverload ? `<p>⚠️ Cookie Overload: Page has ${cookies.length} cookies (threshold: 20)</p>` : ''}
+    <p>Total Trackers: ${totalTrackers}</p>
+    <p>📊 Analytics: ${categorized.analytics.length}</p>
+    <p>📢 Advertising: ${categorized.advertising.length}</p>
+    <p>👥 Social Media: ${categorized.social.length}</p>
+    <p>⚡ Performance: ${categorized.performance.length}</p>
+    <p>⚠️ Suspicious: ${categorized.suspicious.length}</p>
   `;
 
   document.getElementById('tracking-summary').innerHTML = summaryHTML;
 
   // Render findings
-  const allFindings = [...trackerCookies, ...suspiciousCookies];
+  let trackingHTML = '';
 
-  if (allFindings.length === 0) {
-    document.getElementById('tracking-results').innerHTML =
-      '<div class="empty-state"><p>✅ No tracking cookies detected.</p></div>';
-    return;
-  }
+  for (const [category, items] of Object.entries(categorized)) {
+    if (items.length === 0) continue;
 
-  const trackingHTML = allFindings
-    .map(
-      (cookie) => `
+    const categoryLabel =
+      category === 'suspicious'
+        ? '⚠️ Suspicious Patterns'
+        : items[0].categoryData?.category || category;
+
+    trackingHTML += `<h4 style="margin-top: 12px; color: #7c6ef7; font-size: 12px;">${categoryLabel}</h4>`;
+
+    trackingHTML += items
+      .map(
+        (cookie) => `
       <div class="cookie-card">
         <h3>${getSeverityIcon('HIGH')} ${cookie.name}</h3>
         <p><strong>Domain:</strong> ${cookie.domain}</p>
-        <p><strong>Type:</strong> ${cookie.trackingType}</p>
-        <p><strong>Tracking Risk:</strong> This cookie appears to be used for cross-site tracking or analytics.</p>
-        <ul>
-          <li><strong>Why it matters:</strong> Tracking cookies can monitor your browsing habits across multiple sites, enabling behavioral profiling and targeted advertising.</li>
-          <li><strong>Recommendation:</strong> Consider using privacy-focused browsers or browser extensions to block third-party trackers. Review your privacy settings on websites you visit.</li>
-        </ul>
+        <p>This cookie is used for ${category === 'suspicious' ? 'potentially suspicious' : category} tracking purposes.</p>
+        <button class="whitelist-btn" data-domain="${cookie.domain}" style="margin-top: 8px; padding: 4px 8px; background-color: #7c6ef7; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 11px;">✓ Trust this tracker</button>
       </div>
     `
-    )
-    .join('');
+      )
+      .join('');
+  }
+
+  if (trackingHTML === '') {
+    trackingHTML = '<div class="empty-state"><p>✅ No tracking cookies detected.</p></div>';
+  }
 
   document.getElementById('tracking-results').innerHTML = trackingHTML;
+
+  // Add whitelist button listeners
+  document.querySelectorAll('.whitelist-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const domain = btn.getAttribute('data-domain');
+      whitelist.push({ domain, reason: 'Trusted by user', addedAt: new Date().toISOString() });
+      await chrome.storage.local.set({ cmWhitelist: whitelist });
+      btn.textContent = '✓ Trusted';
+      btn.disabled = true;
+    });
+  });
+
+  auditResults.tracking = {
+    trackers: categorized,
+    summary: {
+      totalTrackers,
+      byCategory: categorized
+    }
+  };
 }
 
 // ============================================================
 // Main Audit Flow
 // ============================================================
 
-chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+async function initializePreferences() {
+  preferences = await chrome.storage.local.get('cmPreferences').then((result) => {
+    return result.cmPreferences || {};
+  });
+
+  whitelist = await chrome.storage.local.get('cmWhitelist').then((result) => {
+    return result.cmWhitelist || [];
+  });
+
+  // Update statistics
+  const stats = await chrome.storage.local.get('cmStats').then((result) => {
+    return result.cmStats || { auditsRun: 0 };
+  });
+
+  stats.auditsRun++;
+  stats.lastAudit = new Date().toISOString();
+  await chrome.storage.local.set({ cmStats: stats });
+}
+
+chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
   const activeTab = tabs[0];
   const url = activeTab.url;
+
+  await initializePreferences();
 
   auditResults.url = url;
   console.log('Active tab URL:', url);
@@ -400,5 +586,6 @@ chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     renderStorageAudit(response);
   });
 });
+
 
 
