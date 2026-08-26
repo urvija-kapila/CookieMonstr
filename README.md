@@ -1,269 +1,242 @@
 # CookieMonstr
 
-**Security audit extension for cookies, web storage, and tracking patterns**
+**Local-first browser security research tool for cookies, web storage, and tracking signals.**
 
-A Chrome extension that analyzes the security posture of cookies and web storage on any webpage, detects third-party trackers, and generates comprehensive security reports.
+CookieMonstr is a Manifest V3 Chrome extension for inspecting the client-side security posture of a webpage. It audits cookie attributes, identifies sensitive values in `localStorage` and `sessionStorage`, detects tracking-related cookie signals, and produces JSON reports enriched with OWASP Top 10 and CWE references.
 
----
+The project is intended for security research, defensive testing, education, and responsible disclosure workflows. It does not exploit findings, modify browser state, or transmit audit data to a remote service.
 
-## Features
+## Research Focus
+
+CookieMonstr helps answer practical questions during a client-side security review:
+
+- Are authentication and session cookies protected with `HttpOnly`, `Secure`, and `SameSite` attributes?
+- Is sensitive information being persisted in JavaScript-readable web storage?
+- Are third-party or tracking-oriented cookie patterns present?
+- Which OWASP Top 10 categories and CWE classes are associated with the findings?
+- Can an audit be shared safely without exposing raw storage values?
+
+It is a visibility and triage tool, not a replacement for application testing, source review, network inspection, or a full DAST/SAST platform.
+
+## Capabilities
 
 ### Cookie Security Audit
-- **7-point security evaluation** of all cookies using industry best practices
-- **Risk scoring system** (0-100 points) that categorizes cookies as SAFE, LOW, MEDIUM, HIGH, or CRITICAL
-- **Detailed findings** for each security issue with actionable recommendations
-- **Severity indicators** for quick risk assessment
 
-**Security Rules Evaluated:**
-1. Missing HttpOnly flag (HIGH severity)
-2. Missing Secure flag (HIGH severity)
-3. Missing SameSite attribute (MEDIUM severity)
-4. SameSite=None without Secure flag (HIGH severity)
-5. Sensitive cookie names without security flags (HIGH severity)
-6. Overly broad domain scope (LOW severity)
-7. Long-lived session cookies (MEDIUM severity)
+The background service worker retrieves cookies for the active page through the Chrome Cookies API. Each cookie is evaluated against seven rules:
+
+| Finding | Severity | Reference |
+| --- | --- | --- |
+| Missing `HttpOnly` | High | CWE-1004 |
+| Missing `Secure` on likely session cookies | High | CWE-614 |
+| Missing explicit `SameSite` | Medium | CWE-352 |
+| `SameSite=None` without `Secure` | High | CWE-352 |
+| Sensitive cookie without `Secure` | High | CWE-614 |
+| Broad domain scope | Low | CWE-732 |
+| Long-lived authentication cookie | Medium | CWE-613 |
+
+Cookie risk scores use the current weights below:
+
+- High: 10 points
+- Medium: 5 points
+- Low: 2 points
+- Informational: 0 points
+
+Risk levels are `SAFE`, `LOW`, `MEDIUM`, `HIGH`, and `CRITICAL`.
 
 ### Web Storage Analysis
-- Scans localStorage and sessionStorage for sensitive data
-- Detects **9 sensitive data patterns**: API keys, JWT tokens, passwords, emails, credit cards, SSNs, session IDs, private keys, OAuth tokens
-- Flags suspicious storage practices with security recommendations
-- Safe enumeration that doesn't leak data
 
-**Detected Patterns:**
-- API credentials and keys
-- Authentication tokens and sessions
-- Personal identifiable information (PII)
-- Financial data
-- Private cryptographic keys
+The content script reads page-local `localStorage` and `sessionStorage` and passes the values to the storage audit logic. Detection covers:
 
-### Tracking Detection
-- Identifies **30+ known third-party trackers** across 6 categories:
-  - Analytics (Google Analytics, Mixpanel, Amplitude)
-  - Advertising (DoubleClick, Facebook Ads, Criteo)
-  - Social Media (Facebook, LinkedIn, Twitter)
-  - Performance Monitoring (Sentry, Datadog)
-  - Marketing Automation (HubSpot, Mailchimp)
-  - Customer Communication (Intercom, Zendesk, Drift)
-- Detects suspicious cookie naming patterns
-- Flags cookie overload conditions (20+ cookies)
-- Calculates tracking risk level (LOW, MEDIUM, HIGH)
+- API keys and secrets
+- JWT, OAuth, bearer, and other authentication tokens
+- Passwords and session identifiers
+- Email addresses
+- Credit card numbers and SSNs
+- PEM private keys
 
-### Reports & Export
-- Generates comprehensive JSON security reports
-- Includes timestamp, URL, and full audit details
-- One-click export to file for record-keeping
-- Complete audit history available for review
+Values displayed in the popup are truncated. Access may be unavailable on restricted browser pages or pages where the content script cannot run.
 
----
+### Tracking Signals
+
+The Tracking tab identifies known tracker domains and suspicious cookie naming patterns. It also reports cookie overload when a page has more than 20 cookies and assigns a tracking risk level based on detected signals.
+
+This is heuristic detection. A tracker match does not prove malicious behavior, and the absence of a match does not prove that a page is free of tracking.
+
+### Toolbar Severity Badge
+
+After a page finishes loading, the extension silently audits its cookies and updates the toolbar badge with the highest finding severity:
+
+| State | Badge | Color |
+| --- | --- | --- |
+| Critical finding | `CRIT` | Red |
+| High finding | `HIGH` | Orange |
+| Medium finding | `MED` | Amber |
+| Low or informational finding | `LOW` | Green |
+| No findings | `✓` | Grey |
+
+Opening the popup also refreshes the badge for the active tab in case the service worker was idle during navigation.
+
+### JSON Reporting
+
+The export dialog provides two modes:
+
+- **Redacted export**: the default. Redacts values associated with sensitive key names, IP addresses, email addresses, nested sensitive JSON keys, and high-entropy strings likely to be tokens or encoded identifiers.
+- **Full export**: explicitly selected by the user and includes the raw storage dump.
+
+Redaction is applied to a copy of the audit data at export time. It does not change the in-memory audit state. Reports include cookie findings, storage findings, tracking signals, timestamps, page URL, and OWASP coverage counts. Mapped findings also include CWE and OWASP metadata with attack scenarios.
+
+## OWASP and CWE Mapping
+
+Mapped findings currently cover these OWASP Top 10 categories:
+
+- **A01:2021 - Broken Access Control**: SameSite and CSRF-related cookie exposure
+- **A02:2021 - Cryptographic Failures**: Sensitive information and credentials in browser storage
+- **A05:2021 - Security Misconfiguration**: Cookie configuration and domain-scope issues
+- **A07:2021 - Identification and Authentication Failures**: Session and authentication cookie/token issues
+
+Each mapped finding can include an OWASP category, CWE identifier, MITRE reference URL, and a concise attack scenario. These mappings describe vulnerability classes; they are not CVE identifiers and do not assert that a specific software vulnerability exists.
 
 ## Installation
 
-### From Source (Development)
+CookieMonstr is currently installed from source as an unpacked extension.
 
-1. **Clone or extract** the CookieMonstr repository
-	```bash
-	cd CookieMonstr
-	```
+1. Clone or download this repository.
+2. Open `chrome://extensions/` in Chrome.
+3. Enable **Developer mode**.
+4. Select **Load unpacked**.
+5. Choose the project directory.
+6. Pin CookieMonstr to the toolbar for badge visibility.
 
-2. **Open Chrome Extension Management**
-	- Navigate to: `chrome://extensions/`
-	- Enable "Developer mode" (toggle in top-right corner)
-
-3. **Load the extension**
-	- Click "Load unpacked"
-	- Select the CookieMonstr folder
-	- The extension appears in your toolbar as 🛡️
-
-### Verify Installation
-
-- Extension icon appears in Chrome toolbar
-- Click the icon to open the popup
-- Navigate to any website and click the icon to run an audit
-
----
+After code changes, use **Reload** on the extension card. Reload the target webpage when testing content-script behavior.
 
 ## Usage
 
-### Running an Audit
+1. Navigate to a permitted webpage.
+2. Wait for the page to finish loading so the toolbar badge can update.
+3. Open CookieMonstr from the toolbar.
+4. Review the **Cookies**, **Storage**, and **Tracking** tabs.
+5. Select **Export Report** to choose a redacted or full JSON report.
+6. Use the OWASP and CWE reference badges to open authoritative documentation in a new tab.
 
-1. **Navigate to any website** (except chrome:// system pages)
-2. **Click the CookieMonstr icon** 🛡️ in your Chrome toolbar
-3. **Wait for analysis** (loading indicator shows progress)
-4. **Review results** across 3 tabs:
-	- **Cookies Tab**: All cookies with risk assessment
-	- **Storage Tab**: Suspicious localStorage/sessionStorage items
-	- **Tracking Tab**: Detected third-party trackers
+Do not test systems without authorization. When using findings for disclosure, minimize collected data and prefer the redacted export unless raw values are strictly required for private analysis.
 
-### Understanding Results
+## Architecture
 
-#### Severity Levels
-- 🔴 **CRITICAL** - Immediate security risk; urgent attention required
-- 🟠 **HIGH** - Significant security issue; should be fixed
-- 🟡 **MEDIUM** - Notable risk; consider improvement
-- 🟢 **LOW** - Minor concern; best practice recommendation
-- 🔵 **INFO** - Informational; not a security risk
-- ✅ **SAFE** - Meets security best practices
+```text
+Active webpage
+    |
+    | content_scripts/storage_reader.js
+    v
+Popup ----------------------------+
+    |                             |
+    | GET_COOKIES                 | GET_STORAGE
+    v                             v
+Service worker              Storage audit
+    |                             |
+    v                             v
+Cookie audit + rules        Enriched findings
+    |                             |
+    +-------------+---------------+
+                  v
+       Popup rendering and export
+                  |
+                  v
+        Redacted/full JSON report
+```
 
-#### Risk Score
-- **0 points**: SAFE ✅
-- **1-9 points**: LOW risk 🟢
-- **10-19 points**: MEDIUM risk 🟡
-- **20-29 points**: HIGH risk 🟠
-- **30+ points**: CRITICAL risk 🔴
+## Repository Structure
 
-### Exporting Results
+```text
+CookieMonstr/
+├── manifest.json
+├── README.md
+├── assets/icons/
+├── background/
+│   └── service_worker.js       # Cookie retrieval, audit requests, toolbar badge
+├── content_scripts/
+│   └── storage_reader.js       # Page-local storage reader
+├── lib/
+│   ├── cookieAudit.js          # Cookie evaluation and severity ranking
+│   ├── cookieRules.js          # Cookie security rules
+│   ├── export.js               # JSON report construction and redaction
+│   ├── mappings.js              # OWASP/CWE finding metadata
+│   ├── riskScore.js             # Risk scoring and summary generation
+│   ├── storageAudit.js          # Sensitive storage pattern detection
+│   └── trackingDetector.js      # Tracking detection utilities
+└── popup/
+    ├── popup.html              # Popup structure
+    ├── popup.css               # Popup presentation
+    └── popup.js                 # Audit rendering and user interactions
+```
 
-1. **Click "📥 Export Report"** button
-2. **Save the JSON file** to your computer
-3. **Share or archive** the report for compliance/documentation
+## Permissions and Privacy
 
-JSON report includes:
-- Audit timestamp
-- Page URL
-- Cookie security findings
-- Storage analysis results
-- Tracking detection summary
-- All detailed findings with recommendations
+| Permission | Purpose |
+| --- | --- |
+| `cookies` | Read cookies associated with the active URL for analysis |
+| `activeTab` | Identify the current page and support popup actions |
+| `scripting` | Support page interaction required by the extension |
+| `<all_urls>` | Allow audits across supported websites |
 
----
+CookieMonstr is local-first:
 
-## Security & Privacy
+- Audit processing runs in the browser.
+- No audit data is uploaded to a CookieMonstr server.
+- Cookies and storage are read but not modified.
+- The extension does not create user accounts or collect browsing history.
+- Chrome system and extension pages are excluded from auditing.
 
-### What CookieMonstr Does
-- ✅ Analyzes cookies using the Chrome Cookies API
-- ✅ Reads localStorage/sessionStorage values
-- ✅ Does NOT transmit data to external servers
-- ✅ Runs entirely locally in your browser
-- ✅ No background data collection
+Because the extension can inspect sensitive browser data, use it only on systems and websites where you have permission. Treat full exports as sensitive artifacts and store them securely.
 
-### What CookieMonstr Does NOT Do
-- ❌ Does NOT upload your data to any server
-- ❌ Does NOT track your browsing
-- ❌ Does NOT modify cookies or storage
-- ❌ Does NOT access data on browser extension or system pages
-- ❌ Does NOT require any user accounts or login
+## Limitations and Interpretation
 
-### Permissions Explained
-- **`cookies`** - Required to access and analyze cookies
-- **`activeTab`** - Required to determine which page you're on
-- **`scripting`** - Required to inject content scripts for storage access
-- **`<all_urls>`** - Required to audit cookies on all websites
-
----
+- Cookie findings are based on attributes exposed by the Chrome Cookies API and heuristic identification of likely session cookies.
+- The storage reader can access only page contexts where the content script is allowed to run.
+- Tracking detection is domain and naming based; it is not a complete network-level tracker inventory.
+- A finding is a signal for investigation, not proof of exploitability or business impact.
+- The extension does not inspect server-side session invalidation, application authorization logic, TLS configuration, or response bodies.
+- The current project has no automated test suite in `tests/`; manual validation in Chrome remains important.
 
 ## Development
 
-### Project Structure
-```
-CookieMonstr/
-├── manifest.json              # Extension configuration (MV3)
-├── README.md                  # This file
-├── popup/
-│   ├── popup.html            # UI structure
-│   ├── popup.css             # Styling (beige/brown elegant theme)
-│   └── popup.js              # Popup logic & rendering
-├── background/
-│   └── service_worker.js     # Cookie audit orchestration
-├── content_scripts/
-│   └── storage_reader.js     # Storage access from page context
-├── lib/
-│   ├── cookieAudit.js        # Cookie evaluation engine
-│   ├── cookieRules.js        # 7-point security rules
-│   ├── riskScore.js          # Risk calculation logic
-│   ├── storageAudit.js       # Storage pattern detection
-│   └── trackingDetector.js   # Tracker identification
-└── assets/
-	 └── icons/                # Extension icons
+The project uses:
+
+- Manifest V3
+- Vanilla JavaScript with ES modules
+- Chrome extension APIs
+- CSS3
+
+There are no runtime package dependencies or build steps. Edit the source files directly, reload the unpacked extension in Chrome, and inspect the extension service worker console for background errors.
+
+Before submitting changes, check:
+
+```bash
+git diff --check
 ```
 
-### Tech Stack
-- **Manifest V3** (Modern Chrome Extension API)
-- **Vanilla JavaScript** (No frameworks)
-- **CSS3** with elegant beige/brown color palette
-- **Service Workers** for background tasks
-- **Content Scripts** for page context access
+Then manually verify cookie findings, storage detection, badge states, external reference links, and both export modes on authorized test pages.
 
+## Roadmap
 
+Potential future work includes:
 
-### Future Enhancements (Planned)
-- 📊 Historical audit trending
-- 🌍 Tracking map visualization
-- 📱 Responsive mobile-friendly UI
-- 🔔 Real-time tracking alerts
-- 📈 Compliance reporting (GDPR, CCPA)
-- 🔐 Privacy mode for sensitive audits
+- Automated unit tests for cookie rules, redaction, mappings, and risk scoring
+- Historical audit comparison and trend reporting
+- Network-aware tracker discovery
+- Compliance-oriented report formats
+- Configurable detection rules and severity thresholds
+- Additional browser support
 
----
+## References
 
-## ⚙️ Configuration
-
-### Manifest Settings
-Edit `manifest.json` to customize:
-- **`version`** - Extension version number
-- **`permissions`** - Chrome APIs used (cookies, activeTab, scripting)
-- **`host_permissions`** - Websites to audit (`<all_urls>`)
-- **`action.default_popup`** - Popup file path
-- **`background.service_worker`** - Background worker file
-
-### CSS Theme Customization
-Edit `popup/popup.css` CSS variables:
-```css
-:root {
-  --bg-primary: #f5f1ed;      /* Main background */
-  --text-primary: #5d4e47;    /* Main text */
-  --accent: #a67c52;          /* Accent color */
-  /* ... more variables ... */
-}
-```
-
----
-
-## 🐛 Troubleshooting
-
-### Extension Not Showing in Toolbar
-- Verify "Developer mode" is enabled in `chrome://extensions/`
-- Check that extension loaded without errors
-- Try refreshing the extension or restarting Chrome
-
-### Audit Runs But Shows No Cookies
-- Some sites may not set cookies (check `Network` tab in DevTools)
-- Certain pages may be restricted (chrome://, moz-extension://)
-- Check console for error messages
-
-### Storage Tab Shows "CSP Restriction"
-- Content Security Policy blocks storage access
-- This is a security feature of the website
-- The extension cannot bypass this
-
-### "Cannot Communicate with Service Worker"
-- Refresh the extension in `chrome://extensions/`
-- Reload the webpage and try again
-- Check browser console for errors
-
----
-
-## 📄 License
-
-CookieMonstr is provided as-is for security research and educational purposes.
-
----
-
-## 📚 Resources
-
-### External Links
-- [Chrome Extension Documentation](https://developer.chrome.com/docs/extensions/)
+- [Chrome Extensions documentation](https://developer.chrome.com/docs/extensions/)
+- [Chrome Cookies API](https://developer.chrome.com/docs/extensions/reference/api/cookies)
+- [OWASP Top 10](https://owasp.org/www-project-top-ten/)
+- [OWASP Session Management Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html)
 - [OWASP Cookie Security](https://owasp.org/www-community/controls/Cookie_Security)
+- [MITRE CWE](https://cwe.mitre.org/)
 - [MDN Web Storage API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API)
-- [Privacy Guide](https://privacy.gov/)
 
+## License and Intended Use
 
-
-## 👤 Author & Credits
-
-**CookieMonstr** - Security Audit Extension
-- 
-- Built with Chrome Extension APIs (Manifest V3)
-- Designed for privacy-conscious users
-- Developed for educational and research purposes
-
----
+CookieMonstr is provided as-is for security research and educational purposes. Use it responsibly, respect authorization boundaries, and follow applicable laws and disclosure policies.
