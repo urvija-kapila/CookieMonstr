@@ -50,6 +50,28 @@
     <!-- Error Display -->
     <div id="error-container" class="error-container hidden" role="alert"></div>
 
+    <!-- Export Options -->
+    <div id="export-modal" class="export-modal hidden" role="dialog" aria-modal="true" aria-labelledby="export-modal-title">
+      <div class="export-modal-content">
+        <h2 id="export-modal-title">Export Audit Report</h2>
+        <fieldset class="export-options">
+          <legend>Choose export format</legend>
+          <label>
+            <input type="radio" name="export-mode" value="redacted" checked>
+            Redacted (safe to share)
+          </label>
+          <label>
+            <input type="radio" name="export-mode" value="full">
+            Full export (includes raw data)
+          </label>
+        </fieldset>
+        <div class="export-modal-actions">
+          <button id="cancel-export-button" class="modal-btn secondary-btn" type="button">Cancel</button>
+          <button id="download-export-button" class="modal-btn primary-btn" type="button">Download JSON</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Export Section -->
     <div class="export-section">
       <button id="export-button" class="export-btn" aria-label="Export security audit report as JSON">📥 Export Report</button>
@@ -61,6 +83,6 @@
     </div>
   </div>
 
-  <script src="popup.js"></script>
+  <script type="module" src="popup.js"></script>
 </body>
 </html>

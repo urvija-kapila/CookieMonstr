@@ -391,6 +391,88 @@ body {
   cursor: not-allowed;
 }
 
+.export-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(93, 78, 71, 0.32);
+  z-index: 10;
+}
+
+.export-modal-content {
+  width: 100%;
+  padding: 18px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(93, 78, 71, 0.2);
+}
+
+.export-modal-content h2 {
+  margin: 0 0 14px;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.export-options {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.export-options legend {
+  margin-bottom: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.export-options label {
+  display: block;
+  padding: 7px 0;
+  color: var(--text-primary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.export-options input {
+  margin: 0 8px 0 0;
+  accent-color: var(--accent);
+}
+
+.export-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.modal-btn {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.secondary-btn {
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+}
+
+.primary-btn {
+  color: white;
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.modal-btn:hover {
+  filter: brightness(0.95);
+}
+
 /* ============================================================
    FOOTER
    ============================================================ */

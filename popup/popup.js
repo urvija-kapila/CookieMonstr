@@ -3,6 +3,8 @@
 // Phase 4: Polish & Production - Robust Error Handling
 // ============================================================
 
+import { buildExportObject } from '../lib/export.js';
+
 let auditResults = {
   cookies: [],
   storage: {},
@@ -116,37 +118,27 @@ document.querySelectorAll('.tab-button').forEach((button) => {
 // EXPORT FEATURE WITH ERROR HANDLING
 // ============================================================
 
-function exportReport() {
+function showExportModal() {
+  if (!auditResults.url) {
+    showError('No audit data available to export');
+    return;
+  }
+
+  document.getElementById('export-modal').classList.remove('hidden');
+}
+
+function hideExportModal() {
+  document.getElementById('export-modal').classList.add('hidden');
+}
+
+function exportReport(redact) {
   try {
     if (!auditResults.url) {
       showError('No audit data available to export');
       return;
     }
 
-    const report = {
-      version: '0.1',
-      timestamp: new Date().toISOString(),
-      url: auditResults.url,
-      summary: {
-        totalCookies: auditResults.cookies.length,
-        totalStorageItems: Object.keys(auditResults.storage.localStorage || {}).length +
-                          Object.keys(auditResults.storage.sessionStorage || {}).length,
-        totalTrackers: (auditResults.tracking.trackers || []).length
-      },
-      cookies: {
-        total: auditResults.cookies.length,
-        findings: auditResults.cookies
-      },
-      storage: {
-        items: auditResults.storage
-      },
-      tracking: {
-        summary: auditResults.tracking.summary,
-        trackers: auditResults.tracking.trackers,
-        suspicious: auditResults.tracking.suspicious,
-        overload: auditResults.tracking.overload
-      }
-    };
+    const report = buildExportObject(auditResults, { redact });
 
     const reportJSON = JSON.stringify(report, null, 2);
     const blob = new Blob([reportJSON], { type: 'application/json' });
@@ -164,6 +156,7 @@ function exportReport() {
     setTimeout(() => URL.revokeObjectURL(url), 100);
 
     console.log('✓ Report exported successfully');
+    hideExportModal();
   } catch (error) {
     console.error('Export error:', error);
     showError('Failed to export report. See console for details.');
@@ -479,7 +472,12 @@ function escapeHtml(unsafe) {
 // MAIN AUDIT FLOW WITH ERROR HANDLING
 // ============================================================
 
-document.getElementById('export-button').addEventListener('click', exportReport);
+document.getElementById('export-button').addEventListener('click', showExportModal);
+document.getElementById('cancel-export-button').addEventListener('click', hideExportModal);
+document.getElementById('download-export-button').addEventListener('click', () => {
+  const selectedMode = document.querySelector('input[name="export-mode"]:checked')?.value;
+  exportReport(selectedMode !== 'full');
+});
 
 chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
   try {
