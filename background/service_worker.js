@@ -3,7 +3,7 @@
 // Background task orchestration for cookie auditing
 // ============================================================
 
-import { auditCookies } from "../lib/cookieAudit.js";
+import { auditCookies, getHighestSeverity } from "../lib/cookieAudit.js";
 import { generateSummary } from "../lib/riskScore.js";
 
 // ============================================================
@@ -21,6 +21,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'GET_COOKIES') {
       handleCookieAudit(request, sendResponse);
       return true; // Keep channel open for async response
+    }
+
+    if (request.action === 'UPDATE_BADGE') {
+      updateBadge(request.url, sendResponse, request.tabId ?? sender.tab?.id);
+      return true;
     }
 
     console.warn('[CookieMonstr] Unknown action:', request.action);
@@ -113,6 +118,58 @@ function handleCookieAudit(request, sendResponse) {
     });
   }
 }
+
+// ============================================================
+// Toolbar Badge
+// ============================================================
+
+const BADGE_STATES = {
+  CRITICAL: { text: 'CRIT', color: '#E53935' },
+  HIGH: { text: 'HIGH', color: '#F4511E' },
+  MEDIUM: { text: 'MED', color: '#F9A825' },
+  LOW: { text: 'LOW', color: '#43A047' },
+  INFO: { text: '✓', color: '#757575' }
+};
+
+function setBadge(tabId, severity) {
+  const state = BADGE_STATES[severity] || BADGE_STATES.INFO;
+  chrome.action.setBadgeText({ tabId, text: state.text });
+  chrome.action.setBadgeBackgroundColor({ tabId, color: state.color });
+}
+
+function updateBadge(url, sendResponse, tabId) {
+  if (!url || typeof url !== 'string' || url.startsWith('chrome://') ||
+      url.startsWith('moz-extension://')) {
+    if (tabId !== undefined) {
+      chrome.action.setBadgeText({ tabId, text: '' });
+    }
+    sendResponse?.({ error: null });
+    return;
+  }
+
+  chrome.cookies.getAll({ url }, (cookies) => {
+    if (chrome.runtime.lastError) {
+      console.warn('[CookieMonstr] Could not update badge:', chrome.runtime.lastError);
+      sendResponse?.({ error: chrome.runtime.lastError.message });
+      return;
+    }
+
+    const auditedCookies = auditCookies(Array.isArray(cookies) ? cookies : []);
+    const severity = getHighestSeverity(auditedCookies);
+
+    if (tabId !== undefined) {
+      setBadge(tabId, severity);
+    }
+
+    sendResponse?.({ error: null, severity });
+  });
+}
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete' && tab.url) {
+    updateBadge(tab.url, undefined, tabId);
+  }
+});
 
 // ============================================================
 // Service Worker Lifecycle

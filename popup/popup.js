@@ -59,6 +59,28 @@ function getSeverityIcon(severity) {
   return icons[severity] || '⚪';
 }
 
+function refreshBadge(url, tabId) {
+  chrome.runtime.sendMessage({ action: 'UPDATE_BADGE', url, tabId }, (response) => {
+    if (chrome.runtime.lastError) {
+      console.warn('Could not refresh toolbar badge:', chrome.runtime.lastError);
+      return;
+    }
+
+    if (response?.error) {
+      console.warn('Toolbar badge update failed:', response.error);
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const activeTab = tabs?.[0];
+    if (activeTab?.url && activeTab.id !== undefined) {
+      refreshBadge(activeTab.url, activeTab.id);
+    }
+  });
+});
+
 // ============================================================
 // TAB SWITCHING
 // ============================================================
