@@ -4,6 +4,7 @@
 // ============================================================
 
 import { buildExportObject } from '../lib/export.js';
+import { auditStorage } from '../lib/storageAudit.js';
 
 let auditResults = {
   cookies: [],
@@ -59,6 +60,34 @@ function getSeverityIcon(severity) {
     SAFE: '✅'
   };
   return icons[severity] || '⚪';
+}
+
+function renderFindingReferences(finding) {
+  if (!finding.owasp && !finding.cwe) {
+    return '';
+  }
+
+  const references = [];
+  if (finding.owasp) {
+    references.push(`<a class="ref-badge owasp" href="${escapeHtml(finding.owasp.url)}" data-external-url="${escapeHtml(finding.owasp.url)}">${escapeHtml(finding.owasp.id)} ${escapeHtml(finding.owasp.name)} ↗</a>`);
+  }
+  if (finding.cwe) {
+    references.push(`<a class="ref-badge cwe" href="${escapeHtml(finding.cwe.url)}" data-external-url="${escapeHtml(finding.cwe.url)}">${escapeHtml(finding.cwe.id)} ↗</a>`);
+  }
+
+  return `<div class="ref-row"><span>References:</span>${references.join('')}</div>`;
+}
+
+function renderFinding(finding) {
+  return `
+    <li>
+      <strong>${getSeverityIcon(finding.severity)} ${finding.severity}: ${escapeHtml(finding.title)}</strong><br>
+      ${escapeHtml(finding.explanation)}<br><br>
+      <strong>Attack scenario:</strong> ${escapeHtml(finding.attack_scenario || 'A threat actor may exploit this weakness to compromise data or user sessions.')}<br><br>
+      <strong>Recommendation:</strong> ${escapeHtml(finding.fix)}
+      ${renderFindingReferences(finding)}
+    </li>
+  `;
 }
 
 function refreshBadge(url, tabId) {
@@ -209,15 +238,7 @@ function renderCookieAudit(response) {
               !cookie.findings || cookie.findings.length === 0
                 ? '<li>✅ No security issues found.</li>'
                 : cookie.findings
-                    .map(
-                      (finding) => `
-                  <li>
-                    <strong>${getSeverityIcon(finding.severity)} ${finding.severity}: ${escapeHtml(finding.title)}</strong><br>
-                    ${escapeHtml(finding.explanation)}<br><br>
-                    <strong>Recommendation:</strong> ${escapeHtml(finding.fix)}
-                  </li>
-                `
-                    )
+                    .map(renderFinding)
                     .join('')
             }
           </ul>
@@ -268,42 +289,7 @@ function renderStorageAudit(response) {
       return;
     }
 
-    // Detect suspicious storage items
-    const suspiciousItems = [];
-    const sensitiveKeywords = [
-      'api_key', 'apikey', 'secret', 'token', 'password',
-      'passwd', 'auth', 'jwt', 'bearer', 'session', 'sid'
-    ];
-
-    Object.entries(localStorageData).forEach(([key, value]) => {
-      const isSuspicious = sensitiveKeywords.some((kw) =>
-        key.toLowerCase().includes(kw)
-      );
-
-      if (isSuspicious && typeof value === 'string') {
-        suspiciousItems.push({
-          key,
-          value: value.length > 50 ? value.substring(0, 50) + '...' : value,
-          storageType: 'localStorage',
-          severity: 'HIGH'
-        });
-      }
-    });
-
-    Object.entries(sessionStorageData).forEach(([key, value]) => {
-      const isSuspicious = sensitiveKeywords.some((kw) =>
-        key.toLowerCase().includes(kw)
-      );
-
-      if (isSuspicious && typeof value === 'string') {
-        suspiciousItems.push({
-          key,
-          value: value.length > 50 ? value.substring(0, 50) + '...' : value,
-          storageType: 'sessionStorage',
-          severity: 'HIGH'
-        });
-      }
-    });
+    const suspiciousItems = auditStorage(localStorageData, sessionStorageData);
 
     // Render summary
     const summaryHTML = `
@@ -326,10 +312,10 @@ function renderStorageAudit(response) {
       .map(
         (item) => `
         <div class="storage-item-card">
-          <h3>${getSeverityIcon(item.severity)} ${escapeHtml(item.key)}</h3>
+          <h3>${getSeverityIcon(item.riskLevel)} ${escapeHtml(item.key)}</h3>
           <p><strong>Storage Type:</strong> ${item.storageType}</p>
           <p><strong>Value:</strong> <code>${escapeHtml(item.value)}</code></p>
-          <p>⚠️ This key suggests sensitive data. Consider moving to httpOnly cookies or server-side storage.</p>
+          <ul>${item.findings.map(renderFinding).join('')}</ul>
         </div>
       `
       )
@@ -467,6 +453,16 @@ function escapeHtml(unsafe) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
+document.addEventListener('click', (event) => {
+  const reference = event.target.closest('[data-external-url]');
+  if (!reference) {
+    return;
+  }
+
+  event.preventDefault();
+  chrome.tabs.create({ url: reference.dataset.externalUrl });
+});
 
 // ============================================================
 // MAIN AUDIT FLOW WITH ERROR HANDLING

@@ -306,6 +306,41 @@ body {
   color: var(--accent);
 }
 
+.ref-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.ref-row > span {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ref-badge {
+  padding: 2px 8px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ref-badge.owasp {
+  color: #1565c0;
+  border-color: #90caf9;
+  background: #e3f2fd;
+}
+
+.ref-badge.cwe {
+  color: #6a1b9a;
+  border-color: #ce93d8;
+  background: #f3e5f5;
+}
+
 /* ============================================================
    EMPTY STATE
    ============================================================ */
