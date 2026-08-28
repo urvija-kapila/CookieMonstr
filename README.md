@@ -18,6 +18,78 @@ CookieMonstr helps answer practical questions during a client-side security revi
 
 It is a visibility and triage tool, not a replacement for application testing, source review, network inspection, or a full DAST/SAST platform.
 
+---
+
+## Real-world findings
+
+Testing on real sites demonstrates both the sensitivity and the calibration of the tool — it surfaces genuine vulnerabilities on high-risk sites, and correctly returns a clean result on a well-secured one.
+
+---
+
+### The Indian Express (indianexpress.com) — High-risk news site
+
+<p float="left">
+  <img src="assets/screenshots/iexp_ss1.png" width="200" />
+  <img src="assets/screenshots/iexp_ss2.png" width="200" />
+  <img src="assets/screenshots/iexp_ss3.png" width="200" />
+  <img src="assets/screenshots/iexp_ss4.png" width="200" />
+</p>
+
+
+| Metric | Result |
+|---|---|
+| Cookies audited | 35 |
+| Critical | 2 |
+| Medium | 33 |
+| localStorage items | 46 |
+| sessionStorage items | 10 |
+| Suspicious storage items | 15 |
+| Third-party trackers | 0 |
+| Suspicious tracking patterns | 3 |
+| Toolbar badge | 🟠 HIGH |
+
+**Cookie findings:** Two cookies were scored Critical. The `ev_user_state` cookie (Risk Score: 35) was missing both the HttpOnly and Secure flags — without HttpOnly, any JavaScript on the page can read the cookie via `document.cookie`, making it vulnerable to session theft via XSS. Without Secure, it transmits over unencrypted HTTP connections. Both are flagged separately as HIGH severity findings.
+
+**Storage findings — the most significant result:** The `_cb_expires` key in localStorage was flagged Critical for containing a possible credit card number (`1821875187948` — a 13-digit value matching card number patterns). This maps to **A02:2021 Cryptographic Failures** and **CWE-922 (Insecure Storage of Sensitive Information)**. The attack scenario shown by the extension: a compromised page script can directly collect this payment data from browser storage. Credit card data must never be stored in localStorage — PCI-DSS compliance requires server-side handling via compliant payment processors such as Stripe or Square. Across 46 localStorage items and 10 sessionStorage items, 15 were flagged as suspicious.
+
+**Tracking findings:** No third-party trackers were detected from the known blocklist, but 3 suspicious patterns were identified. The `bounceClientVisit7834v` cookie was flagged for a naming pattern consistent with behavioural profiling and session tracking. The page also triggered a cookie overload warning — 35 cookies exceeds the threshold of 20, which indicates either poor cookie hygiene or extensive analytics instrumentation.
+
+**Export:** The Redacted export mode (default) strips raw storage values before writing to file, so this report can be shared publicly without exposing the flagged credit card value or session identifiers.
+
+---
+
+### SBI Net Banking (onlinesbi.sbi.bank.in) — Well-secured banking site
+
+<p float="left">
+  <img src="assets/screenshots/sbi_ss1.png" width="200" />
+  <img src="assets/screenshots/sbi_ss2.png" width="200" />
+  <img src="assets/screenshots/sbi_ss3.png" width="200" />
+  <img src="assets/screenshots/sbi_ss4.png" width="200" />
+</p>
+
+| Metric | Result |
+|---|---|
+| Cookies audited | 4 |
+| Critical | 0 |
+| High | 0 |
+| Medium | 0 |
+| Low | 2 |
+| Safe | 2 |
+| localStorage items | 0 |
+| sessionStorage items | 0 |
+| Third-party trackers | 0 |
+| Suspicious tracking patterns | 0 |
+| Toolbar badge | 🟡 MED |
+
+**This is what a well-secured site looks like.** SBI's net banking portal uses only 4 cookies, no client-side storage, and zero third-party trackers — a minimal, disciplined configuration that is exactly appropriate for a financial institution. Two cookies (`imc10`, and one other) scored Risk Score 0 with the SAFE designation and "No security issues found."
+
+**The one real finding:** Two session cookies — `TS0151e286` (Risk Score: 7) and `TS93b20f13027` (Risk Score: 5) — were missing an explicit SameSite attribute. The extension surfaces this as a MEDIUM finding mapped to **A01:2021 Broken Access Control** and **CWE-352 (Cross-Site Request Forgery)**. The attack scenario: a malicious site can craft a forged request to SBI's domain, and without SameSite, the browser will automatically include these cookies in that request — the basis of a CSRF attack. The recommendation is explicit `SameSite=Lax` or `SameSite=Strict` on both cookies.
+
+This finding is not a critical vulnerability in isolation — modern browsers default to Lax behaviour for cookies without an explicit SameSite attribute — but explicit declaration is an OWASP-recommended hardening measure, and it is correct for a security tool to surface it. The fact that this is the *only* finding on India's largest public-sector banking portal validates that CookieMonstr does not manufacture noise on clean sites. The `MED` toolbar badge reflects the aggregate of the SameSite gaps; there are no Critical or High findings anywhere on the page.
+
+**The contrast between these two sites** is the clearest demonstration of what CookieMonstr is for: a major news site with 35 cookies, 15 suspicious storage items, and a possible credit card number in localStorage versus a banking portal with 4 cookies, no storage, no trackers, and one low-severity configuration gap. The tool calibrates correctly to both.
+
+
 ## Capabilities
 
 ### Cookie Security Audit
@@ -237,6 +309,11 @@ Potential future work includes:
 - [MITRE CWE](https://cwe.mitre.org/)
 - [MDN Web Storage API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API)
 
-## License and Intended Use
+## Author
 
-CookieMonstr is provided as-is for security research and educational purposes. Use it responsibly, respect authorization boundaries, and follow applicable laws and disclosure policies.
+**Urvija Kapila**
+B.Tech CSE (Cyber Security), Dayananda Sagar University
+
+---
+
+*Built as part of an independent security research portfolio. All findings on third-party sites are documented for educational purposes only.*
