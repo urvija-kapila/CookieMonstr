@@ -1,0 +1,147 @@
+
+[
+  {
+    "id": "PW-01",
+    "rule": "password_in_storage",
+    "key": "user_password",
+    "value": "synthetic-password-value",
+    "expected": true,
+    "reason": "Explicit password field containing a synthetic credential"
+  },
+  {
+    "id": "PW-02",
+    "rule": "password_in_storage",
+    "key": "loginPwd",
+    "value": "synthetic-login-secret",
+    "expected": true,
+    "reason": "Password abbreviation in camelCase"
+  },
+  {
+    "id": "PW-03",
+    "rule": "password_in_storage",
+    "key": "passwordRequired",
+    "value": "false",
+    "expected": false,
+    "reason": "Boolean configuration flag"
+  },
+  {
+    "id": "PW-04",
+    "rule": "password_in_storage",
+    "key": "passwordPolicy",
+    "value": "strict",
+    "expected": false,
+    "reason": "Password policy metadata"
+  },
+  {
+    "id": "PW-05",
+    "rule": "password_in_storage",
+    "key": "account_pass",
+    "value": "synthetic-account-secret",
+    "expected": true,
+    "reason": "Password abbreviation separated by underscore"
+  },
+  {
+    "id": "PW-06",
+    "rule": "password_in_storage",
+    "key": "passengerStatus",
+    "value": "active",
+    "expected": false,
+    "reason": "Unrelated word containing pass"
+  },
+  {
+    "id": "API-01",
+    "rule": "api_key_exposed",
+    "key": "service_api_key",
+    "value": "SYNTHETIC_API_CREDENTIAL",
+    "expected": true,
+    "reason": "Explicit API credential field"
+  },
+  {
+    "id": "API-02",
+    "rule": "api_key_exposed",
+    "key": "accessKey",
+    "value": "SYNTHETIC_ACCESS_CREDENTIAL",
+    "expected": true,
+    "reason": "CamelCase access key"
+  },
+  {
+    "id": "API-03",
+    "rule": "api_key_exposed",
+    "key": "api_key_required",
+    "value": "true",
+    "expected": false,
+    "reason": "API authentication configuration flag"
+  },
+  {
+    "id": "API-04",
+    "rule": "api_key_exposed",
+    "key": "keyboardShortcut",
+    "value": "Ctrl+K",
+    "expected": false,
+    "reason": "Unrelated keyboard setting"
+  },
+  {
+    "id": "API-05",
+    "rule": "api_key_exposed",
+    "key": "secretKey",
+    "value": "SYNTHETIC_SERVICE_SECRET",
+    "expected": true,
+    "reason": "Explicit secret key field"
+  },
+  {
+    "id": "API-06",
+    "rule": "api_key_exposed",
+    "key": "api_key_policy",
+    "value": "strict",
+    "expected": false,
+    "reason": "API policy metadata"
+  },
+  {
+    "id": "SES-01",
+    "rule": "session_id_exposed",
+    "key": "session_id",
+    "value": "synthetic-session-alpha",
+    "expected": true,
+    "reason": "Explicit session identifier"
+  },
+  {
+    "id": "SES-02",
+    "rule": "session_id_exposed",
+    "key": "userSession",
+    "value": "synthetic-session-beta",
+    "expected": true,
+    "reason": "Session identifier under camelCase key"
+  },
+  {
+    "id": "SES-03",
+    "rule": "session_id_exposed",
+    "key": "sessionTimeout",
+    "value": "1800",
+    "expected": false,
+    "reason": "Numeric session configuration"
+  },
+  {
+    "id": "SES-04",
+    "rule": "session_id_exposed",
+    "key": "session_enabled",
+    "value": "false",
+    "expected": false,
+    "reason": "Boolean session configuration"
+  },
+  {
+    "id": "SES-05",
+    "rule": "session_id_exposed",
+    "key": "auth_session",
+    "value": "synthetic-session-gamma",
+    "expected": true,
+    "reason": "Explicit authentication session field"
+  },
+  {
+    "id": "SES-06",
+    "rule": "session_id_exposed",
+    "key": "sessionPolicy",
+    "value": "strict",
+    "expected": false,
+    "reason": "Session policy configuration"
+  }
+]

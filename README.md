@@ -20,13 +20,15 @@ It is a visibility and triage tool, not a replacement for application testing, s
 
 ---
 
-## Real-world findings
+## Browser Audit Case Studies
 
-Testing on real sites demonstrates both the sensitivity and the calibration of the tool — it surfaces genuine vulnerabilities on high-risk sites, and correctly returns a clean result on a well-secured one.
+CookieMonstr was exercised against publicly accessible webpages to observe cookie configurations, browser-storage entries, and tracking-related indicators.
 
----
+The following case studies demonstrate how the extension collects and presents security findings in different browsing environments. Results are based on the browser state and page content observed during individual audits. They are not comprehensive security assessments of the organizations or evidence of confirmed exploitable vulnerabilities.
 
-### The Indian Express (indianexpress.com) — High-risk news site
+The screenshots and counts represent observations from the recorded audits and may change as websites update their configurations or CookieMonstr's detection logic evolves.
+
+### The Indian Express (indianexpress.com) — Browser Audit Case Study
 
 <p float="left">
   <img src="assets/screenshots/iexp_ss1.png" width="200" />
@@ -48,17 +50,18 @@ Testing on real sites demonstrates both the sensitivity and the calibration of t
 | Suspicious tracking patterns | 3 |
 | Toolbar badge | 🟠 HIGH |
 
-**Cookie findings:** Two cookies were scored Critical. The `ev_user_state` cookie (Risk Score: 35) was missing both the HttpOnly and Secure flags — without HttpOnly, any JavaScript on the page can read the cookie via `document.cookie`, making it vulnerable to session theft via XSS. Without Secure, it transmits over unencrypted HTTP connections. Both are flagged separately as HIGH severity findings.
+**Cookie findings:** During the recorded audit, CookieMonstr inspected 35 cookies and identified several missing or potentially weak security attributes. Two cookies received Critical risk classifications under the scoring model used at the time. For example, `ev_user_state` was reported as lacking `HttpOnly` and `Secure` attributes. These settings can be relevant to client-side access and transport security, although the actual security impact depends on the cookie's purpose, authentication role, and application configuration.
 
-**Storage findings — the most significant result:** The `_cb_expires` key in localStorage was flagged Critical for containing a possible credit card number (`1821875187948` — a 13-digit value matching card number patterns). This maps to **A02:2021 Cryptographic Failures** and **CWE-922 (Insecure Storage of Sensitive Information)**. The attack scenario shown by the extension: a compromised page script can directly collect this payment data from browser storage. Credit card data must never be stored in localStorage — PCI-DSS compliance requires server-side handling via compliant payment processors such as Stripe or Square. Across 46 localStorage items and 10 sessionStorage items, 15 were flagged as suspicious.
+**Storage findings:** CookieMonstr inspected 46 localStorage entries and 10 sessionStorage entries, flagging 15 items as potentially sensitive. One entry, `_cb_expires`, contained a 13-digit numeric value that matched the auditor's credit-card detection heuristic. This was an unverified pattern match, not evidence that a payment-card number was exposed. Numeric timestamps, identifiers, and other application values may produce similar matches.
 
-**Tracking findings:** No third-party trackers were detected from the known blocklist, but 3 suspicious patterns were identified. The `bounceClientVisit7834v` cookie was flagged for a naming pattern consistent with behavioural profiling and session tracking. The page also triggered a cookie overload warning — 35 cookies exceeds the threshold of 20, which indicates either poor cookie hygiene or extensive analytics instrumentation.
+**Tracking findings:** The audit reported no matches against its known third-party tracker-domain list, three suspicious naming patterns, and a cookie-count warning. These results identify potential tracking-related indicators rather than establishing malicious behavior or a complete inventory of tracking activity.
 
-**Export:** The Redacted export mode (default) strips raw storage values before writing to file, so this report can be shared publicly without exposing the flagged credit card value or session identifiers.
+**Export:** CookieMonstr provides a redacted JSON export intended to reduce exposure of sensitive browser-storage values. Automated regression tests verify redaction for selected synthetic authentication-token and payment-card scenarios. Redaction is not a guarantee that every possible secret or identifying value has been removed; exported reports should be reviewed before sharing.
 
+*Interpretation:* These observations demonstrate CookieMonstr's ability to surface potentially relevant browser-security indicators. No confirmed vulnerability or payment-data exposure is asserted for this website.
 ---
 
-### SBI Net Banking (onlinesbi.sbi.bank.in) — Well-secured banking site
+### SBI Net Banking — Browser Audit Case Study
 
 <p float="left">
   <img src="assets/screenshots/sbi_ss1.png" width="200" />
@@ -81,39 +84,50 @@ Testing on real sites demonstrates both the sensitivity and the calibration of t
 | Suspicious tracking patterns | 0 |
 | Toolbar badge | 🟡 MED |
 
-**This is what a well-secured site looks like.** SBI's net banking portal uses only 4 cookies, no client-side storage, and zero third-party trackers — a minimal, disciplined configuration that is exactly appropriate for a financial institution. Two cookies (`imc10`, and one other) scored Risk Score 0 with the SAFE designation and "No security issues found."
+**Cookie and storage observations:** During the recorded audit, CookieMonstr identified four cookies, no accessible localStorage or sessionStorage entries, and no tracking-related matches within its configured detection rules. Two cookies received a SAFE classification, while two received low or medium risk classifications under the scoring model used at the time.
 
-**The one real finding:** Two session cookies — `TS0151e286` (Risk Score: 7) and `TS93b20f13027` (Risk Score: 5) — were missing an explicit SameSite attribute. The extension surfaces this as a MEDIUM finding mapped to **A01:2021 Broken Access Control** and **CWE-352 (Cross-Site Request Forgery)**. The attack scenario: a malicious site can craft a forged request to SBI's domain, and without SameSite, the browser will automatically include these cookies in that request — the basis of a CSRF attack. The recommendation is explicit `SameSite=Lax` or `SameSite=Strict` on both cookies.
+**SameSite findings:** The cookies `TS0151e286` and `TS93b20f13027` were reported as lacking explicitly configured SameSite attributes. CookieMonstr identifies this condition as a potential configuration-hardening opportunity and provides CWE-352 and OWASP-related references.
 
-This finding is not a critical vulnerability in isolation — modern browsers default to Lax behaviour for cookies without an explicit SameSite attribute — but explicit declaration is an OWASP-recommended hardening measure, and it is correct for a security tool to surface it. The fact that this is the *only* finding on India's largest public-sector banking portal validates that CookieMonstr does not manufacture noise on clean sites. The `MED` toolbar badge reflects the aggregate of the SameSite gaps; there are no Critical or High findings anywhere on the page.
+A missing explicit SameSite attribute does not independently demonstrate cross-site request forgery. Modern browsers generally apply Lax-by-default behavior, and effective CSRF protection depends on additional application and browser controls.
 
-**The contrast between these two sites** is the clearest demonstration of what CookieMonstr is for: a major news site with 35 cookies, 15 suspicious storage items, and a possible credit card number in localStorage versus a banking portal with 4 cookies, no storage, no trackers, and one low-severity configuration gap. The tool calibrates correctly to both.
+**Interpretation:** This case study demonstrates how CookieMonstr reports a comparatively small number of browser-security findings for the observed page state. It does not establish that the banking application is free of vulnerabilities, trackers, or other security risks.
+
+**Comparison:** The two recorded audits illustrate how CookieMonstr presents different cookie counts, browser-storage observations, tracking indicators, and heuristic risk classifications across webpages.
+
+*Note:* These results are historical observations and have not been independently revalidated against the latest CookieMonstr implementation.
 
 
 ## Capabilities
 
 ### Cookie Security Audit
 
-The background service worker retrieves cookies for the active page through the Chrome Cookies API. Each cookie is evaluated against seven rules:
+The background service worker retrieves cookies associated with the active webpage through the Chrome Cookies API. CookieMonstr evaluates cookie attributes using six heuristic security rules.
 
 | Finding | Severity | Reference |
-| --- | --- | --- |
+|---|---|---|
 | Missing `HttpOnly` | High | CWE-1004 |
 | Missing `Secure` on likely session cookies | High | CWE-614 |
 | Missing explicit `SameSite` | Medium | CWE-352 |
 | `SameSite=None` without `Secure` | High | CWE-352 |
-| Sensitive cookie without `Secure` | High | CWE-614 |
-| Broad domain scope | Low | CWE-732 |
+| Broad cookie domain scope | Low | CWE-732 |
 | Long-lived authentication cookie | Medium | CWE-613 |
 
-Cookie risk scores use the current weights below:
+The duplicate Secure-attribute detection was removed during regression testing to prevent multiple findings for the same underlying condition from inflating risk scores.
+
+**Risk scoring**
+
+CookieMonstr assigns weighted scores to findings:
 
 - High: 10 points
 - Medium: 5 points
 - Low: 2 points
 - Informational: 0 points
 
-Risk levels are `SAFE`, `LOW`, `MEDIUM`, `HIGH`, and `CRITICAL`.
+The resulting risk classifications are `SAFE`, `LOW`, `MEDIUM`, `HIGH`, and `CRITICAL`.
+
+These scores support prioritization of potential issues. They are not quantitative measurements of exploitability, attack probability, or business impact.
+
+**Validation:** Six cookie-security rules were evaluated against 24 controlled scenarios, with 11 true positives, 13 true negatives, and no observed misclassifications on that dataset.
 
 ### Web Storage Analysis
 
@@ -150,12 +164,20 @@ Opening the popup also refreshes the badge for the active tab in case the servic
 
 ### JSON Reporting
 
-The export dialog provides two modes:
+CookieMonstr generates structured JSON reports containing cookie findings, browser-storage observations, tracking indicators, risk classifications, timestamps, page URLs, and applicable OWASP/CWE references.
 
-- **Redacted export**: the default. Redacts values associated with sensitive key names, IP addresses, email addresses, nested sensitive JSON keys, and high-entropy strings likely to be tokens or encoded identifiers.
-- **Full export**: explicitly selected by the user and includes the raw storage dump.
+Two export modes are supported:
 
-Redaction is applied to a copy of the audit data at export time. It does not change the in-memory audit state. Reports include cookie findings, storage findings, tracking signals, timestamps, page URL, and OWASP coverage counts. Mapped findings also include CWE and OWASP metadata with attack scenarios.
+- **Redacted export (default):** Applies heuristic redaction to potentially sensitive browser-storage values and relevant storage findings. The implementation includes checks for sensitive key names, email addresses, IP addresses, nested JSON fields, and token-like values.
+- **Full export:** An explicitly selected option that preserves raw browser-storage values for authorized private analysis.
+
+**Security improvements:** Automated regression testing identified and addressed a data-disclosure issue where sensitive storage values could remain visible within exported security findings even when storage-item redaction was enabled.
+
+The corrected export logic preserves security findings while redacting flagged values in the tested scenarios.
+
+Redaction operates on a separate report representation without intentionally modifying the original audit state.
+
+**Privacy limitation:** Redaction is heuristic and has not been exhaustively verified across every report field or sensitive-data format. Reports may contain sensitive URLs, identifiers, cookie metadata, or other contextual information. Users should review redacted reports before sharing them publicly and handle full exports as sensitive artifacts.
 
 ## OWASP and CWE Mapping
 
@@ -220,25 +242,56 @@ Cookie audit + rules        Enriched findings
 
 ```text
 CookieMonstr/
-├── manifest.json
-├── README.md
-├── assets/icons/
+├── .github/
+│   └── workflows/
+│       └── security-tests.yml       # Automated GitHub Actions CI
+│
+├── assets/
+│   ├── icons/                  # Extension icons
+│   └── screenshots/            # Browser audit screenshots
+│
 ├── background/
-│   └── service_worker.js       # Cookie retrieval, audit requests, toolbar badge
+│   └── service_worker.js       # Cookie retrieval, audit requests, badge
+│
 ├── content_scripts/
-│   └── storage_reader.js       # Page-local storage reader
+│   └── storage_reader.js       # Browser storage collection
+│
 ├── lib/
-│   ├── cookieAudit.js          # Cookie evaluation and severity ranking
-│   ├── cookieRules.js          # Cookie security rules
-│   ├── export.js               # JSON report construction and redaction
-│   ├── mappings.js              # OWASP/CWE finding metadata
-│   ├── riskScore.js             # Risk scoring and summary generation
-│   ├── storageAudit.js          # Sensitive storage pattern detection
-│   └── trackingDetector.js      # Tracking detection utilities
-└── popup/
-    ├── popup.html              # Popup structure
-    ├── popup.css               # Popup presentation
-    └── popup.js                 # Audit rendering and user interactions
+│   ├── cookieAudit.js          # Cookie audit and severity ordering
+│   ├── cookieRules.js          # Six cookie security rules
+│   ├── export.js               # JSON reporting and redaction
+│   ├── mappings.js             # OWASP/CWE metadata
+│   ├── riskScore.js            # Risk scoring and aggregation
+│   ├── storageAudit.js         # Sensitive storage detection
+│   └── trackingDetector.js     # Tracking-related indicators
+│
+├── popup/
+│   ├── popup.html              # Extension interface
+│   ├── popup.css               # Popup styling
+│   └── popup.js                # Audit rendering and interactions
+│
+├── tests/
+│   ├── cookieRules.test.js     # Cookie-rule unit tests
+│   ├── cookieAudit.test.js     # Cookie-audit integration tests
+│   ├── export.test.js          # Export redaction regression tests
+│   ├── storageMetadata.test.js # Storage false-positive regression tests
+│   └── storageAdversarial.test.js
+│                               # Storage edge-case tests
+│
+├── evaluation/
+│   ├── validation/
+│   │   ├── storage-cases.json       # Storage development fixtures
+│   │   └── final-storage-cases.json # Additional storage fixtures
+│   │
+│   ├── storageAccuracy.js      # Initial password-rule evaluation
+│   ├── passwordHoldout.js      # Additional password development cases
+│   ├── securityBenchmark.js    # Multi-rule development benchmark
+│   ├── runValidation.js        # Labeled storage evaluation runner
+│   └── cookieValidation.js     # Cookie rule-conformance evaluation
+│
+├── manifest.json              # Chrome extension configuration
+├── package.json               # Node.js test configuration
+└── README.md                  # Documentation and validation results
 ```
 
 ## Permissions and Privacy
@@ -260,44 +313,235 @@ CookieMonstr is local-first:
 
 Because the extension can inspect sensitive browser data, use it only on systems and websites where you have permission. Treat full exports as sensitive artifacts and store them securely.
 
+## Security Testing and Detection Validation
+
+CookieMonstr includes automated unit, integration, security regression, and report-redaction tests implemented using Node.js's built-in test runner. GitHub Actions executes the automated test suite on pushes and pull requests targeting `main`.
+
+### Automated Regression Testing
+
+The automated test suite validates:
+
+- Cookie security rule behavior and finding classification
+- Risk-score calculations and severity ordering for selected scenarios
+- Prevention of duplicate cookie security findings
+- Sensitive-value redaction in JSON security reports
+- Browser-storage detection behavior and known false-positive regressions
+
+**Latest verified regression suite:** 25 tests passed, 0 failed.
+
+### Detection Accuracy Evaluation
+
+Detection behavior was evaluated using synthetic, labeled browser-security scenarios with predefined expected outcomes.
+
+The evaluation measures true positives (TP), true negatives (TN), false positives (FP), false negatives (FN), precision, recall, F1 score, and error rates.
+
+#### Cookie Security Evaluation
+
+Six cookie-security rules were evaluated across 24 controlled cases.
+
+| Metric | Result |
+|---|---:|
+| Test cases | 24 |
+| True positives | 11 |
+| True negatives | 13 |
+| False positives | 0 |
+| False negatives | 0 |
+| Precision | 100% |
+| Recall | 100% |
+| F1 score | 100% |
+
+The tested rules cover missing `HttpOnly`, missing `Secure`, unspecified `SameSite`, `SameSite=None` without `Secure`, broad cookie domains, and long-lived authentication cookies.
+
+These results demonstrate conformance with the expected outcomes of the selected synthetic configurations, not comprehensive real-world detection accuracy.
+
+#### Browser Storage Detection — Development Evaluation
+
+Three storage detection rules were evaluated across 18 controlled cases.
+
+| Metric | Before refinement | After refinement |
+|---|---:|---:|
+| Test cases | 18 | 18 |
+| True positives | 9 | 9 |
+| True negatives | 5 | 9 |
+| False positives | 4 | 0 |
+| False negatives | 0 | 0 |
+| Precision | 69.23% | 100% |
+| Recall | 100% | 100% |
+| F1 score | 81.82% | 100% |
+
+The refinements reduced observed false positives in password, API-key, and session-identifier detection.
+
+These cases informed the detection improvements and therefore represent development-set results.
+
+#### Additional Storage Detection Evaluation
+
+Four additional storage detection rules were evaluated across 16 controlled cases.
+
+| Detection rule | Precision | Recall | F1 score |
+|---|---:|---:|---:|
+| JWT/token exposure | 66.67% | 100% | 80% |
+| Credit-card exposure | 66.67% | 100% | 80% |
+| Private-key marker exposure | 100% | 50% | 66.67% |
+| Email exposure | 50% | 100% | 66.67% |
+
+**Combined results:** 7 true positives, 4 true negatives, 4 false positives, and 1 false negative.
+
+Observed limitations included configuration metadata incorrectly flagged as sensitive, a numeric order identifier misclassified as payment-card data, and an encrypted private-key marker not detected.
+
+These cases evaluate selected heuristic and format-matching behaviors, not credential validity or exploitability.
+
+### Reproducing the Evaluation
+
+Run the automated regression suite:
+
+```bash
+npm test
+```
+
+Run the controlled cookie-security evaluation:
+
+```bash
+node evaluation/cookieValidation.js
+```
+
+Run the original storage development evaluation:
+
+```bash
+node evaluation/runValidation.js storage-cases.json
+```
+
+Run the additional storage evaluation:
+
+```bash
+node evaluation/runValidation.js final-storage-cases.json
+```
+
+### Interpretation
+
+All evaluation results are based on limited synthetic datasets. Some fixtures overlap conceptually with development examples, and the datasets have not been independently sampled or validated against representative real-world applications.
+
+The reported metrics describe performance on the specified test cases only. They should not be interpreted as overall vulnerability-detection accuracy, exploitability measurements, or guarantees against false positives and false negatives.
+
 ## Limitations and Interpretation
 
-- Cookie findings are based on attributes exposed by the Chrome Cookies API and heuristic identification of likely session cookies.
-- The storage reader can access only page contexts where the content script is allowed to run.
-- Tracking detection is domain and naming based; it is not a complete network-level tracker inventory.
-- A finding is a signal for investigation, not proof of exploitability or business impact.
-- The extension does not inspect server-side session invalidation, application authorization logic, TLS configuration, or response bodies.
-- The current project has no automated test suite in `tests/`; manual validation in Chrome remains important.
+CookieMonstr is a heuristic-based browser security auditing tool designed to identify potential security weaknesses in cookies, browser storage, and tracking-related behavior. Its findings should be interpreted as indicators for further investigation rather than definitive evidence of exploitable vulnerabilities.
+
+### Detection Limitations
+
+- **Cookie Security:** Cookie findings rely on attributes exposed by the Chrome Cookies API and heuristic identification of likely session cookies. The auditor cannot independently verify server-side session management or authentication behavior.
+- **Browser Storage:** Detection relies on recognizable key names and supported value patterns. Sensitive credentials stored under generic, misleading, or unconventional key names may not be detected.
+- **False Positives and False Negatives:** Security-related configuration fields may resemble credential fields, while some sensitive values may not match existing detection patterns. Although detection heuristics have been refined through controlled testing, incorrect classifications remain possible.
+- **Storage Access:** The storage reader can inspect only page contexts where the extension's content scripts are permitted to execute.
+- **Tracking Detection:** Tracking-related findings are based on domain and naming heuristics. CookieMonstr does not provide a comprehensive network-level inventory of tracking activity.
+- **Scope:** The extension does not inspect server-side session invalidation, application authorization logic, TLS configuration, or HTTP response bodies.
+
+### Testing and Validation Limitations
+
+- CookieMonstr includes automated unit, integration, security regression, and redaction tests using Node.js's built-in test runner.
+- Automated tests are executed through GitHub Actions on pushes and pull requests targeting the `main` branch.
+- Detection accuracy has been evaluated using controlled, synthetically generated test cases with predefined expected outcomes.
+- Precision, recall, false-positive rates, false-negative rates, and F1 scores are calculated for selected browser-storage detection rules.
+- Some evaluation cases were used to refine detection heuristics. Consequently, their results represent development-set performance rather than independent validation.
+- The evaluated datasets are limited in size and do not establish detection accuracy across real-world websites, authentication systems, or browser configurations.
+- Automated tests do not replace manual validation of extension behavior in Chrome.
+
+### Security Interpretation
+
+CookieMonstr findings represent potential security risks requiring contextual review. A reported finding does not, by itself, establish exploitability, successful credential compromise, or business impact. Risk scores are heuristic prioritization indicators rather than quantitative measurements of real-world attack likelihood.
+
 
 ## Development
 
-The project uses:
+CookieMonstr is built using:
 
-- Manifest V3
+- Chrome Extension Manifest V3
 - Vanilla JavaScript with ES modules
 - Chrome extension APIs
-- CSS3
+- HTML and CSS
+- Node.js built-in test runner
+- GitHub Actions for continuous integration
 
-There are no runtime package dependencies or build steps. Edit the source files directly, reload the unpacked extension in Chrome, and inspect the extension service worker console for background errors.
+The extension does not require a frontend build process or runtime npm dependencies. Node.js is used for automated testing and detection evaluation.
 
-Before submitting changes, check:
+### Local Development
+
+Edit the source files in VS Code and reload the unpacked extension through `chrome://extensions/`.
+
+Reload the target webpage when testing changes affecting content scripts or page-state collection.
+
+### Automated Testing
+
+Run the complete automated regression suite:
 
 ```bash
-git diff --check
+npm test
 ```
 
-Then manually verify cookie findings, storage detection, badge states, external reference links, and both export modes on authorized test pages.
+The current suite contains 25 automated tests covering cookie rules, audit behavior, storage-detection regressions, selected risk-score behavior, and JSON export redaction.
+
+### Security Evaluation
+
+Run the cookie-rule evaluation:
+
+```bash
+node evaluation/cookieValidation.js
+```
+
+Run the storage development evaluation:
+
+```bash
+node evaluation/runValidation.js storage-cases.json
+```
+
+Run the additional storage evaluation:
+
+```bash
+node evaluation/runValidation.js final-storage-cases.json
+```
+
+Evaluation scripts report detection classifications and metrics for labeled synthetic test scenarios.
+
+### Continuous Integration
+
+GitHub Actions runs the automated regression suite on pushes and pull requests targeting the `main` branch.
+
+The workflow uses a GitHub-hosted runner to verify that previously tested functionality continues to behave as expected.
+
+### Manual Validation
+
+Automated tests are complemented by manual extension testing in Chrome, including checks for:
+
+- Cookie and storage findings
+- Popup rendering and navigation
+- Toolbar badge updates
+- Tracking indicators
+- External security-reference links
+- Redacted and full JSON exports
+
+Manual testing should use authorized environments and synthetic data whenever practical.
 
 ## Roadmap
 
-Potential future work includes:
+### Completed
 
-- Automated unit tests for cookie rules, redaction, mappings, and risk scoring
+- Automated cookie-security rule tests and audit integration tests
+- Security regression testing using Node.js
+- Duplicate cookie-finding correction
+- JSON report-redaction improvements
+- Controlled detection accuracy evaluation using labeled synthetic cases
+- False-positive analysis and refinement of selected storage rules
+- GitHub Actions continuous integration
+
+### Potential Future Improvements
+
+- Broader adversarial and independently sourced validation datasets
+- Improved detection of sensitive values stored under unconventional keys
+- Stronger payment-card and credential-format validation
 - Historical audit comparison and trend reporting
-- Network-aware tracker discovery
-- Compliance-oriented report formats
+- Network-aware tracking detection
 - Configurable detection rules and severity thresholds
-- Additional browser support
+
+These are potential extensions rather than requirements for the current project version.
 
 ## References
 

@@ -24,12 +24,6 @@ test("harmless session timeout is not detected", () => {
   );
 });
 
-
-test.todo(
-  "Define supported value-based session formats and test detection under generic storage keys"
-);
-
-
 // Adversarial case: password-looking key containing metadata.
 test("password configuration is not treated as credential", () => {
   assert.equal(

@@ -1,0 +1,131 @@
+
+[
+  {
+    "id": "JWT-01",
+    "rule": "jwt_token_exposed",
+    "key": "credentials",
+    "value": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.signature",
+    "expected": true,
+    "reason": "Synthetic JWT-shaped value under a generic key"
+  },
+  {
+    "id": "JWT-02",
+    "rule": "jwt_token_exposed",
+    "key": "authToken",
+    "value": "synthetic-authentication-token",
+    "expected": true,
+    "reason": "Explicit authentication token field"
+  },
+  {
+    "id": "JWT-03",
+    "rule": "jwt_token_exposed",
+    "key": "theme",
+    "value": "dark",
+    "expected": false,
+    "reason": "Ordinary application preference"
+  },
+  {
+    "id": "JWT-04",
+    "rule": "jwt_token_exposed",
+    "key": "tokenRefreshEnabled",
+    "value": "false",
+    "expected": false,
+    "reason": "Token-related configuration flag"
+  },
+  {
+    "id": "CARD-01",
+    "rule": "credit_card_exposed",
+    "key": "payment_card",
+    "value": "4111111111111111",
+    "expected": true,
+    "reason": "Synthetic payment-card test number"
+  },
+  {
+    "id": "CARD-02",
+    "rule": "credit_card_exposed",
+    "key": "cardNumber",
+    "value": "4242424242424242",
+    "expected": true,
+    "reason": "Synthetic payment-card test number"
+  },
+  {
+    "id": "CARD-03",
+    "rule": "credit_card_exposed",
+    "key": "orderId",
+    "value": "1234567890123456",
+    "expected": false,
+    "reason": "Sixteen-digit order identifier, not a payment card"
+  },
+  {
+    "id": "CARD-04",
+    "rule": "credit_card_exposed",
+    "key": "quantity",
+    "value": "250",
+    "expected": false,
+    "reason": "Ordinary numeric quantity"
+  },
+  {
+    "id": "KEY-01",
+    "rule": "private_key_exposed",
+    "key": "signingMaterial",
+    "value": "-----BEGIN PRIVATE KEY-----",
+    "expected": true,
+    "reason": "Synthetic private-key PEM marker"
+  },
+  {
+    "id": "KEY-02",
+    "rule": "private_key_exposed",
+    "key": "signingMaterial",
+    "value": "-----BEGIN ENCRYPTED PRIVATE KEY-----",
+    "expected": true,
+    "reason": "Encrypted private-key PEM marker"
+  },
+  {
+    "id": "KEY-03",
+    "rule": "private_key_exposed",
+    "key": "publicKey",
+    "value": "-----BEGIN PUBLIC KEY-----",
+    "expected": false,
+    "reason": "Public-key marker, not private-key material"
+  },
+  {
+    "id": "KEY-04",
+    "rule": "private_key_exposed",
+    "key": "certificate",
+    "value": "-----BEGIN CERTIFICATE-----",
+    "expected": false,
+    "reason": "Certificate marker"
+  },
+  {
+    "id": "EMAIL-01",
+    "rule": "email_exposed",
+    "key": "contactEmail",
+    "value": "person@example.test",
+    "expected": true,
+    "reason": "Synthetic email address stored under an email field"
+  },
+  {
+    "id": "EMAIL-02",
+    "rule": "email_exposed",
+    "key": "username",
+    "value": "admin@example.test",
+    "expected": true,
+    "reason": "Email address used as a username"
+  },
+  {
+    "id": "EMAIL-03",
+    "rule": "email_exposed",
+    "key": "username",
+    "value": "guest",
+    "expected": false,
+    "reason": "Username without an email address"
+  },
+  {
+    "id": "EMAIL-04",
+    "rule": "email_exposed",
+    "key": "emailNotifications",
+    "value": "false",
+    "expected": false,
+    "reason": "Email notification configuration flag"
+  }
+]
